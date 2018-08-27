@@ -1,0 +1,113 @@
+import Vue from 'vue';
+import Qs from 'qs'
+import router from '../router'
+import axios from 'axios';
+
+// axios 配置
+axios.defaults.timeout = 5000;
+const isProdMode = Object.is(process.env.NODE_ENV, 'production')
+axios.defaults.baseURL = isProdMode ? 'http://api.limaiot.com' : '/api'; //这是调用数据接口
+let $http = {};
+
+// http request 拦截器，通过这个，我们就可以把Cookie传到后台
+axios.interceptors.request.use(
+  config => {
+
+config.data = Qs.stringify(config.data);
+config.headers = {
+  'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'//设置跨域头部
+};
+if (sessionStorage.getItem('temkey')) {  // 判断是否存在token，如果存在的话，则每个http header都加上token
+  config.headers.temkey = `${sessionStorage.getItem('temkey')}`;
+}
+return config;
+},
+err => {
+  return Promise.reject(err);
+}
+);
+
+// http response 拦截器
+axios.interceptors.response.use(
+  response => {
+//response.data.errCode是我接口返回的值，如果值为2，说明Cookie丢失，然后跳转到登录页，这里根据大家自己的情况来设定
+  if(response.data.errorCode == '10003') {
+  router.push({
+    path: '/',
+  })
+}
+return response;
+},
+error => {
+  return Promise.reject(error.response.data)
+});
+/**
+ * 定制post方法
+ * @param  {String} url  请求地址
+ * @param  {Object} data 请求参数
+ * @return {json}
+ */
+$http.post = function (url, data = {}) {
+  return new Promise((resolve, reject) => {
+    axios.post(url, data)
+    .then(response => {
+    resolve(response);
+}, err => {
+    reject(err);
+  })
+})
+}
+
+
+/**
+ * 定制get方法
+ * @param  {String} url 请求地址
+ * @return {json}
+ */
+$http.get = function (url, params = {}) {
+
+  return new Promise((resolve, reject) => {
+    axios.get(url, {
+    params: params
+  })
+    .then(response => {
+    resolve(response);
+})
+.catch(err => {
+    reject(err)
+  })
+})
+}
+/**
+ * 定制put方法
+ * @param  {String} url 请求地址
+ * @return {json}
+ */
+$http.put = function (url, data = {}) {
+  return new Promise((resolve, reject) => {
+    axios.patch(url, data)
+    .then(response => {
+    resolve(response);
+}, err => {
+    reject(err);
+  })
+})
+}
+/**
+ * 定制delete方法
+ * @param  {String} url 请求地址
+ * @return {json}
+ */
+$http.delete = function (url, data = {}) {
+  return new Promise((resolve, reject) => {
+    axios.delete(url, data)
+    .then(response => {
+    resolve(response);
+}, err => {
+    reject(err);
+  })
+})
+}
+
+
+export default $http;
